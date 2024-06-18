@@ -1,0 +1,37 @@
+  {{#if user}}
+<header>
+    <p>Bienvenido!, {{user.first_name}} {{user.last_name}}!</p>
+    <p>Rol: {{user.role}} </p>
+    <a href="/api/sessions/logout">Logout</a>
+</header>
+{{/if}}
+
+
+
+
+    <h1>Todos los Productos</h1>
+<ul>
+    {{#each productos}}
+        <li> {{this.title}} </li>
+        <li> {{this.description}} </li>
+        <li> Precio: ${{this.price}} </li>
+        <li> Categoría: {{this.category}} </li>
+        <li>
+            <form action="/api/carts/{{cartId}}/products/{{this._id}}" method="POST">
+                <input type="hidden" name="productId" value="{{this._id}}">
+                <input type="number" name="quantity" value="1" min="1">
+                <button type="submit">Agregar al Carrito</button>
+            </form>
+        </li>
+    {{/each}}
+</ul>
+
+{{#if hasPrevPage}}
+    <a href="/products?page={{prevPage}}"> Anterior </a>
+{{/if}}
+
+{{#if hasNextPage}}
+    <a href="/products?page={{nextPage}}"> Siguiente </a>
+{{/if}}
+
+<p>Página {{currentPage}} de {{totalPages}} </p>
