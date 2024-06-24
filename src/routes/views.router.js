@@ -2,13 +2,13 @@ const express = require("express");
 const router = express.Router(); 
 const ProductModel = require("../models/product.model.js");
 const CartModel = require("../models/cart.model.js");
-const { isAuthenticated, authorizeRole } = require('../middlewares/auth.middleware.js');
+const authorization = require('../middlewares/auth.middleware.js');
 
-router.get("/",  isAuthenticated, authorizeRole(['usuario']) ,async (req, res) => {
+router.get("/", authorization(['usuario']) ,async (req, res) => {
    res.render("chat");
 });
 
-router.get("/products", isAuthenticated, authorizeRole(['usuario']) , async (req, res) => {
+router.get("/products", authorization(['usuario']) , async (req, res) => {
    try {
        // Obtener los parámetros de la solicitud
        const { limit = 10, page = 1 } = req.query;
@@ -44,7 +44,7 @@ router.get("/products", isAuthenticated, authorizeRole(['usuario']) , async (req
    }
 });
 
-router.get("/carts/:cid", isAuthenticated, authorizeRole(['usuario']) , async (req, res) => {
+router.get("/carts/:cid", authorization(['usuario']) , async (req, res) => {
     const cartId = req.params.cid;
 
     try {
@@ -98,7 +98,7 @@ router.get("/login", (req, res) => {
     res.render("profile", { user: req.session.user });
  });
   
- router.get("/realtimeproducts", isAuthenticated, authorizeRole(['admin']) ,  (req, res) => {
+ router.get("/realtimeproducts", authorization(['admin']),  (req, res) => {
     res.render("realtimeproducts");
 })
 
