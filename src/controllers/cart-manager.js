@@ -99,77 +99,54 @@ class CartController {
         }
     }
 
-    async purchaseCart(req, res) {
-        const { cid } = req.params;
-        const { purchaser } = req.body;
-
-        try {
-            // Obtener el carrito
-            const cart = await CartService.getCartById(cid);
-
-            if (!cart) {
-                return res.status(404).json({ message: "Carrito no encontrado" });
-            }
-
-            // Iterar sobre los productos del carrito
-            const purchaseDetails = [];
-            const unprocessedProducts = [];
-            let total = 0;
-
-            for (const item of cart.products) {
-                const product = await ProductService.getProductById(item.product);
-
-                if (product.stock >= item.quantity) {
-                    // Reducir el stock del producto
-                    product.stock -= item.quantity;
-                    await ProductService.updateProduct(product._id, product);
-
-                    // Agregar el producto al detalle de la compra
-                    purchaseDetails.push({
-                        product: product._id,
-                        quantity: item.quantity,
-                        price: product.price
-                    });
-
-                    // Calcular el total
-                    total += item.quantity * product.price;
-                } else {
-                    // Agregar el producto a los no procesados
-                    unprocessedProducts.push(item.product);
+    async purchaseCart(req, res, next) {
+            const cartId = req.params.cid;
+            const userId = req.user._id; // Asumiendo que el usuario está autenticado y el ID del usuario está disponible en req.user
+    
+            try {
+                const cart = await Cart.findById(cartId).populate('products.product');
+                if (!cart) {
+                    return res.status(404).json({ message: 'Carrito no encontrado' });
                 }
-            }
-
-            if (purchaseDetails.length > 0) {
-                // Crear el ticket de compra
-                const ticket = await TicketService.createTicket({
-                    code: uuidv4(), // Generar un código único para el ticket
-                    amount: total,
-                    purchaser,
-                });
-
-                // Filtrar los productos que no se compraron y actualizar el carrito
-                const updatedProducts = cart.products.filter(item => unprocessedProducts.includes(item.product.toString()));
-                cart.products = updatedProducts;
+    
+                let totalAmount = 0;
+                const productsToPurchase = [];
+                const productsOutOfStock = [];
+    
+                for (const item of cart.products) {
+                    const product = item.product;
+                    if (product.stock >= item.quantity) {
+                        product.stock -= item.quantity;
+                        await product.save();
+                        totalAmount += product.price * item.quantity;
+                        productsToPurchase.push(product._id);
+                    } else {
+                        productsOutOfStock.push(product._id);
+                    }
+                }
+    
+                const ticketData = {
+                    code: uuidv4(),
+                    amount: totalAmount,
+                    purchaser: userId
+                };
+    
+                const ticket = await Ticket.create(ticketData);
+    
+                // Filtrar productos del carrito para eliminar los que se compraron con éxito
+                cart.products = cart.products.filter(item => productsOutOfStock.includes(item.product._id));
                 await cart.save();
-
-                // Responder con los detalles de la compra y el ticket
+    
                 res.json({
-                    message: "Compra realizada con éxito",
-                    purchaseDetails,
+                    message: 'Compra procesada con éxito',
                     ticket,
-                    unprocessedProducts,
+                    productsOutOfStock
                 });
-            } else {
-                res.json({
-                    message: "No se pudo realizar la compra. Sin productos disponibles.",
-                    unprocessedProducts,
-                });
+            } catch (error) {
+                console.error('Error al procesar la compra', error);
+                next(error);
             }
-        } catch (error) {
-            console.error("Error al procesar la compra", error);
-            res.status(500).json({ message: "Error al procesar la compra", error });
         }
-    }
 }
 
 module.exports = new CartController();
