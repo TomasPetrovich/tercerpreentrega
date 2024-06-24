@@ -1,16 +1,10 @@
-module.exports.isAuthenticated = (req, res, next) => {
-    if (req.isAuthenticated && req.isAuthenticated()) {
-        return next();
-    }
-    res.status(401).json({ message: 'No autorizado' });
-};
-
-
-module.exports.authorizeRole = (roles) => {
+const authorization = (roles) => {
     return (req, res, next) => {
-        if (roles.includes(req.user.role)) {
-            return next();
+        if (!req.isAuthenticated() || !roles.includes(req.user.role)) {
+            return res.status(403).json({ error: "No autorizado" });
         }
-        res.status(403).json({ error: "Acceso denegado" });
+        next();
     };
 };
+
+module.exports = authorization;
